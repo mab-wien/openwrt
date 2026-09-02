@@ -142,6 +142,7 @@ static void rtldsa_port_set_salrn(struct rtl838x_switch_priv *priv,
 static int rtldsa_83xx_setup(struct dsa_switch *ds)
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
+	int err;
 
 	pr_debug("%s called\n", __func__);
 
@@ -192,12 +193,17 @@ static int rtldsa_83xx_setup(struct dsa_switch *ds)
 
 	priv->r->pie_init(priv);
 
+	err = rtl83xx_tc_init(priv);
+	if (err)
+		return err;
+
 	return 0;
 }
 
 static int rtldsa_93xx_setup(struct dsa_switch *ds)
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
+	int err;
 
 	pr_info("%s called\n", __func__);
 
@@ -235,6 +241,11 @@ static int rtldsa_93xx_setup(struct dsa_switch *ds)
 	ds->assisted_learning_on_cpu_port = true;
 
 	priv->r->pie_init(priv);
+
+	err = rtl83xx_tc_init(priv);
+	if (err)
+		return err;
+
 	priv->r->led_init(priv);
 
 	return 0;
@@ -2544,13 +2555,13 @@ static int rtldsa_cls_flower_add(struct dsa_switch *ds, int port,
 	const struct flow_action_entry *act;
 	int ret;
 
-	if (!priv->r->port_rate_police_add)
-		return -EOPNOTSUPP;
-
 	/* the single action must be a rate/bandwidth limiter */
 	act = rtldsa_rate_policy_extract(cls);
 
 	if (!rtldsa_port_rate_police_validate(act))
+		return rtl83xx_pie_cls_flower_add(priv, port, cls, ingress);
+
+	if (!priv->r->port_rate_police_add)
 		return -EOPNOTSUPP;
 
 	mutex_lock(&priv->reg_mutex);
@@ -2589,6 +2600,18 @@ static int rtldsa_cls_flower_del(struct dsa_switch *ds, int port,
 	struct rtldsa_port *p = &priv->ports[port];
 	int ret;
 
+	/*
+	 * PIE flower rules currently support ingress only.
+	 *
+	 * Try to delete a PIE rule first. If no rule with this cookie exists,
+	 * fall back to the existing port rate-policing implementation.
+	 */
+	if (ingress) {
+		ret = rtl83xx_pie_cls_flower_del(priv, cls, ingress);
+		if (ret != -ENOENT)
+			return ret;
+	}
+
 	if (!priv->r->port_rate_police_del)
 		return -EOPNOTSUPP;
 
@@ -2605,6 +2628,28 @@ static int rtldsa_cls_flower_del(struct dsa_switch *ds, int port,
 
 unlock:
 	mutex_unlock(&priv->reg_mutex);
+
+	return ret;
+}
+
+static int rtldsa_cls_flower_stats(struct dsa_switch *ds, int port,
+				   struct flow_cls_offload *cls,
+				   bool ingress)
+{
+	struct rtl838x_switch_priv *priv = ds->priv;
+	int ret;
+
+	if (!ingress)
+		return 0;
+
+	ret = rtl83xx_pie_cls_flower_stats(priv, cls, ingress);
+
+	/*
+	 * Existing port-policing rules are not stored in tc_ht and currently
+	 * don't provide per-rule statistics through this path.
+	 */
+	if (ret == -ENOENT)
+		return 0;
 
 	return ret;
 }
@@ -2728,4 +2773,5 @@ const struct dsa_switch_ops rtldsa_93xx_switch_ops = {
 
 	.cls_flower_add		= rtldsa_cls_flower_add,
 	.cls_flower_del		= rtldsa_cls_flower_del,
+	.cls_flower_stats	= rtldsa_cls_flower_stats,
 };
