@@ -332,12 +332,23 @@ int rtldsa_tc_init(struct rtl838x_switch_priv *priv)
 	return err;
 }
 
+static void rtldsa_packet_cntr_clear(struct rtl838x_switch_priv *priv, int counter)
+{
+	if (counter < 0 || !priv->r->packet_cntr_clear)
+		return;
+
+	mutex_lock(&priv->reg_mutex);
+	priv->r->packet_cntr_clear(counter);
+	mutex_unlock(&priv->reg_mutex);
+}
+
 static void rtldsa_tc_flow_free(void *ptr, void *arg)
 {
 	struct rtl83xx_flow *flow = ptr;
 	struct rtl838x_switch_priv *priv = arg;
 
 	priv->r->pie_rule_rm(priv, &flow->rule);
+	rtldsa_packet_cntr_clear(priv, flow->rule.packet_cntr);
 
 	/*
 	 * Readers may still hold an RCU-protected reference after the
@@ -378,6 +389,12 @@ static int rtl83xx_configure_flower(struct rtl838x_switch_priv *priv,
 	flow = kzalloc(sizeof(*flow), GFP_KERNEL);
 	if (!flow)
 		return -ENOMEM;
+
+	/*
+	 * kzalloc() sets this to 0, but 0 is a valid hardware counter ID.
+	 * Use -1 until a counter has actually been assigned.
+	 */
+	flow->rule.packet_cntr = -1;
 
 	flow->cookie = f->cookie;
 	flow->priv = priv;
@@ -439,6 +456,7 @@ static int rtl83xx_delete_flower(struct rtl838x_switch_priv *priv,
 		return err;
 
 	priv->r->pie_rule_rm(priv, &flow->rule);
+	rtldsa_packet_cntr_clear(priv, flow->rule.packet_cntr);
 
 	kfree_rcu(flow, rcu_head);
 
