@@ -448,24 +448,41 @@ static int rtl83xx_delete_flower(struct rtl838x_switch_priv *priv,
 static int rtl83xx_stats_flower(struct rtl838x_switch_priv *priv,
 				struct flow_cls_offload *cls_flower)
 {
-	struct rtl83xx_flow *flow;
+	struct rtl83xx_flow *flow, *flow_ref;
 	unsigned long lastused = 0;
-	int total_packets, new_packets;
+	u32 total_packets, new_packets = 0;
+	u32 last_packet_cnt;
+	int packet_cntr;
 
 	pr_debug("%s:\n", __func__);
-	flow = rhashtable_lookup_fast(&priv->tc_ht, &cls_flower->cookie, tc_ht_params);
-	if (!flow)
-		return -1;
 
-	if (flow->rule.packet_cntr >= 0) {
-		total_packets = priv->r->packet_cntr_read(flow->rule.packet_cntr);
-		pr_debug("Total packets: %d\n", total_packets);
-		new_packets = total_packets - flow->rule.last_packet_cnt;
-		flow->rule.last_packet_cnt = total_packets;
+	rcu_read_lock();
+	flow = rhashtable_lookup_fast(&priv->tc_ht, &cls_flower->cookie, tc_ht_params);
+	if (!flow) {
+		rcu_read_unlock();
+		return -ENOENT;
+	}
+	flow_ref = flow;
+	packet_cntr = flow->rule.packet_cntr;
+	last_packet_cnt = flow->rule.last_packet_cnt;
+	rcu_read_unlock();
+
+	if (packet_cntr >= 0) {
+		mutex_lock(&priv->reg_mutex);
+		total_packets = priv->r->packet_cntr_read(packet_cntr);
+		mutex_unlock(&priv->reg_mutex);
+		dev_dbg(priv->dev, "total packets: %u\n", total_packets);
+		new_packets = total_packets - last_packet_cnt;
+
+		rcu_read_lock();
+		flow = rhashtable_lookup_fast(&priv->tc_ht, &cls_flower->cookie, tc_ht_params);
+		if (flow == flow_ref)
+			flow->rule.last_packet_cnt = total_packets;
+		rcu_read_unlock();
 	}
 
-	/* TODO: We need a second PIE rule to count the bytes */
-	flow_stats_update(&cls_flower->stats, 100 * new_packets, new_packets, 0, lastused,
+	/* We have no byte counter, report packets only */
+	flow_stats_update(&cls_flower->stats, 0, new_packets, 0, lastused,
 			  FLOW_ACTION_HW_STATS_IMMEDIATE);
 
 	return 0;
