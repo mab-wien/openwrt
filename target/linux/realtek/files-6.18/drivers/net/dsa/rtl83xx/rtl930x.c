@@ -2246,6 +2246,7 @@ const struct rtldsa_config rtldsa_930x_cfg = {
 	.imr_glb = RTL930X_IMR_GLB,
 	.n_counters = 2048,
 	.n_pie_blocks = 16,
+	.pie_rule_id_is_log_counter = true,
 	.port_ignore = 0x3f,
 	.vlan_tables_read = rtl930x_vlan_tables_read,
 	.vlan_set_tagged = rtl930x_vlan_set_tagged,

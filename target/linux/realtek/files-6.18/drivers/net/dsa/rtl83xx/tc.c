@@ -339,7 +339,7 @@ int rtl83xx_tc_init(struct rtl838x_switch_priv *priv)
 	return err;
 }
 
-static void rtl83xx_packet_cntr_free(struct rtl838x_switch_priv *priv, int counter)
+static void rtl83xx_packet_cntr_clear(struct rtl838x_switch_priv *priv, int counter)
 {
 	if (counter < 0)
 		return;
@@ -347,8 +347,21 @@ static void rtl83xx_packet_cntr_free(struct rtl838x_switch_priv *priv, int count
 	mutex_lock(&priv->reg_mutex);
 	if (priv->r->packet_cntr_clear)
 		priv->r->packet_cntr_clear(counter);
-	set_bit(counter, priv->packet_cntr_use_bm);
 	mutex_unlock(&priv->reg_mutex);
+}
+
+static void rtl83xx_packet_cntr_free(struct rtl838x_switch_priv *priv, int counter)
+{
+	if (counter < 0)
+		return;
+
+	rtl83xx_packet_cntr_clear(priv, counter);
+
+	if (!priv->r->pie_rule_id_is_log_counter) {
+		mutex_lock(&priv->reg_mutex);
+		set_bit(counter, priv->packet_cntr_use_bm);
+		mutex_unlock(&priv->reg_mutex);
+	}
 }
 
 static void rtl83xx_tc_flow_free(void *ptr, void *arg)
@@ -426,22 +439,38 @@ rcu_unlock:
 	if (err)
 		goto out_remove;
 
+	if (!priv->r->packet_cntr_read || !priv->r->packet_cntr_clear) {
+		err = -EOPNOTSUPP;
+		goto out_remove;
+	}
+
 	if (ingress_port >= 0) {
 		flow->rule.spn = ingress_port;
 		flow->rule.spn_m = 0x7f;
 	}
 
 	/* Add log action to flow */
-	flow->rule.packet_cntr = rtl83xx_packet_cntr_alloc(priv);
-	if (flow->rule.packet_cntr >= 0) {
+	flow->rule.log_sel = true;
+	if (!priv->r->pie_rule_id_is_log_counter) {
+		flow->rule.packet_cntr = rtl83xx_packet_cntr_alloc(priv);
+		if (flow->rule.packet_cntr < 0) {
+			err = -ENOSPC;
+			goto out_remove;
+		}
+
 		pr_debug("Using packet counter %d\n", flow->rule.packet_cntr);
-		flow->rule.log_sel = true;
 		flow->rule.log_data = flow->rule.packet_cntr;
 	}
 
 	err = priv->r->pie_rule_add(priv, &flow->rule);
 	if (err)
 		goto out_counter;
+
+	if (priv->r->pie_rule_id_is_log_counter) {
+		flow->rule.packet_cntr = flow->rule.id;
+		pr_debug("Using PIE rule counter %d\n", flow->rule.packet_cntr);
+		rtl83xx_packet_cntr_clear(priv, flow->rule.packet_cntr);
+	}
 
 	return 0;
 

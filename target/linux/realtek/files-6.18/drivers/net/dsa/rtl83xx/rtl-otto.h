@@ -1340,6 +1340,7 @@ struct rtldsa_config {
 	int imr_glb;
 	int n_counters;
 	int n_pie_blocks;
+	bool pie_rule_id_is_log_counter;
 	u8 num_lag_ids;
 	u8 cpu_port;
 	u8 port_ignore;
