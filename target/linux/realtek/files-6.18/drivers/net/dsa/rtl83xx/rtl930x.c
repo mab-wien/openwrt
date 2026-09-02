@@ -1749,6 +1749,10 @@ static int rtl930x_pie_verify_template(struct rtl838x_switch_priv *priv,
 	if (ether_addr_to_u64(pr->dmac) && !rtl930x_pie_templ_has(t, TEMPLATE_FIELD_DMAC0))
 		return -1;
 
+	if (pr->ethertype_m &&
+		!rtl930x_pie_templ_has(t, TEMPLATE_FIELD_ETHERTYPE))
+		return -1;
+
 	/* TODO: Check more */
 
 	i = find_first_zero_bit(&priv->pie_use_bm[block * 4], PIE_BLOCK_SIZE);
@@ -1787,7 +1791,7 @@ static int rtl930x_pie_rule_add(struct rtl838x_switch_priv *priv, struct pie_rul
 			break;
 	}
 
-	if (block >= priv->r->n_pie_blocks) {
+	if (block >= max_block) {
 		mutex_unlock(&priv->pie_mutex);
 		return -EOPNOTSUPP;
 	}
@@ -1904,6 +1908,13 @@ static void rtl930x_packet_cntr_clear(int counter)
 	struct table_reg *r = rtl_table_get(RTL9300_TBL_0, 3);
 
 	pr_debug("In %s, id %d\n", __func__, counter);
+
+	/*
+	 * Two counters share one LOG table entry. Read the current entry
+	 * before modifying one half so the adjacent counter is preserved.
+	 */
+	rtl_table_read(r, counter / 2);
+
 	/* The table has a size of 2 registers */
 	if (counter % 2)
 		sw_w32(0, rtl_table_data(r, 0));
@@ -2247,6 +2258,7 @@ const struct rtldsa_config rtldsa_930x_cfg = {
 	.imr_glb = RTL930X_IMR_GLB,
 	.n_counters = 2048,
 	.n_pie_blocks = 16,
+	.pie_rule_id_is_log_counter = true,
 	.port_ignore = 0x3f,
 	.vlan_tables_read = rtl930x_vlan_tables_read,
 	.vlan_set_tagged = rtl930x_vlan_set_tagged,
