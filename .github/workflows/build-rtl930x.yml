@@ -4,6 +4,10 @@
 # current openwrt/openwrt main; if that is conflict-free the result is pushed.
 # Then the Zyxel XGS1210-12 (rev B1) image is built and uploaded as an artifact.
 # A push to `main` skips the rebase and just builds what was pushed.
+#
+# The freshest build is also published to a rolling pre-release tagged
+# `xgs1210-12-latest`, so the current `main` image is always downloadable
+# without a GitHub login: https://github.com/mab-wien/openwrt/releases/tag/xgs1210-12-latest
 name: Build Zyxel XGS1210-12
 
 on:
@@ -63,6 +67,8 @@ jobs:
     if: needs.sync.outputs.build == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 240
+    permissions:
+      contents: write
     steps:
       - name: Free up disk space
         run: |
@@ -128,3 +134,28 @@ jobs:
             bin/targets/realtek/rtl930x/config.buildinfo
           if-no-files-found: error
           retention-days: 30
+
+      # Publish the same files to a rolling pre-release so the current `main`
+      # image is downloadable without a login. The tag is force-moved onto the
+      # built commit every run and the release is recreated, dropping stale
+      # assets. Moving the tag with git first keeps this race-free.
+      - name: Refresh the "latest main" release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: xgs1210-12-latest
+        run: |
+          # The scheduled run is triggered by the pre-rebase commit, so take the
+          # SHA that was actually checked out and built, not $GITHUB_SHA.
+          built_sha=$(git rev-parse HEAD)
+          git push -f origin "${built_sha}:refs/tags/${TAG}"
+          gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes || true
+          cd bin/targets/realtek/rtl930x
+          shopt -s nullglob
+          assets=(sha256sums config.buildinfo *zyxel_xgs1210-12-b1*)
+          [ "${#assets[@]}" -ge 3 ] || { echo "::error::no image assets found"; exit 1; }
+          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Zyxel XGS1210-12 B1 - latest main" \
+            --notes "Automated build of \`main\` @ ${built_sha} (run ${GITHUB_RUN_ID}), patch stack rebased onto openwrt/openwrt main." \
+            --prerelease \
+            "${assets[@]}"
