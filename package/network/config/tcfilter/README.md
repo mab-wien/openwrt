@@ -73,9 +73,12 @@ tc filter add dev <device> ingress pref <pref>
 
 ### Hardware packet counters (Realtek rtl930x PIE offload)
 
-With more than one offloaded flower rule on a switch, only the rule whose
-PIE rule id is even-aligned reports a working `tc -s` hardware packet
-count; the others stay at 0. Dropping / trapping / redirecting is
-unaffected. This is a limitation of the rtl930x LOG-counter path in the
-kernel driver (`rtl930x_packet_cntr_read()` assumes the L3-route counter
-layout), not of this package.
+Older rtl930x kernels mis-read the per-rule LOG packet counter: with more
+than one offloaded flower rule, only the rule whose PIE rule id was
+even-aligned reported a working `tc -s` hardware packet count and the
+others stayed at 0 (`rtl930x_packet_cntr_read()` assumed the L3-route
+counter layout). Dropping / trapping / redirecting was never affected.
+
+Fixed in the kernel driver upstream (openwrt/openwrt#24994); every
+offloaded rule now reports its own count. Firmware built before that
+patch still shows the old behaviour.
