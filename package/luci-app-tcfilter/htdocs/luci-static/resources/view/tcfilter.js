@@ -47,7 +47,9 @@ function parseFilters(txt) {
 		}).join(' ');
 		var act = (o.actions && o.actions[0]) || {};
 		var st = act.stats || {};
-		var pkts = (st.hw_packets != null) ? st.hw_packets : st.packets;
+		/* st.packets is the honest total; for a fully offloaded rule it
+		 * equals hw_packets. Whether it is HW-accelerated is shown separately. */
+		var pkts = st.packets;
 
 		return {
 			pref: f.pref,
@@ -98,7 +100,7 @@ return view.extend({
 					E('th', { 'class': 'th' }, _('Offload')),
 					E('th', { 'class': 'th' }, _('In HW')),
 					E('th', { 'class': 'th' }, _('Action')),
-					E('th', { 'class': 'th' }, _('HW packets')),
+					E('th', { 'class': 'th' }, _('Packets')),
 					E('th', { 'class': 'th' }, _('Label'))
 				])
 			]);

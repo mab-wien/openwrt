@@ -80,7 +80,7 @@ msgstr ""
 msgid "Action"
 msgstr ""
 
-msgid "HW packets"
+msgid "Packets"
 msgstr ""
 
 msgid "No rules configured yet."

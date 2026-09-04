@@ -96,8 +96,8 @@ msgstr "In HW"
 msgid "Action"
 msgstr "Aktion"
 
-msgid "HW packets"
-msgstr "HW-Pakete"
+msgid "Packets"
+msgstr "Pakete"
 
 msgid "No rules configured yet."
 msgstr "Noch keine Regeln konfiguriert."
