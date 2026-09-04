@@ -4,8 +4,7 @@
 		"read": {
 			"uci": [ "tcfilter" ],
 			"file": {
-				"/sbin/tc -s -j filter show dev * ingress": [ "exec" ],
-				"/sys/class/net": [ "list" ]
+				"/sbin/tc -s -j filter show dev * ingress": [ "exec" ]
 			}
 		},
 		"write": {

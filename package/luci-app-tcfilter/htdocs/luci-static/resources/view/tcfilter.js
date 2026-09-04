@@ -5,6 +5,7 @@
 'require uci';
 'require poll';
 'require dom';
+'require tools.widgets as widgets';
 
 function tcExec(args) {
 	return fs.exec('/sbin/tc', args).then(function(res) {
@@ -55,10 +56,7 @@ function parseFilters(txt) {
 
 return view.extend({
 	load: function() {
-		return Promise.all([
-			fs.list('/sys/class/net').catch(function() { return []; }),
-			uci.load('tcfilter')
-		]);
+		return uci.load('tcfilter');
 	},
 
 	pollStatus: function(node) {
@@ -99,32 +97,32 @@ return view.extend({
 				if (r.rows == null) {
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
 						E('td', { 'class': 'td', 'colspan': '9' },
-							E('em', {}, _('%s: could not read tc output').format(r.dev)))
+							E('em', {}, [ _('%s: could not read tc output').format(r.dev) ]))
 					]));
 					return;
 				}
 				if (!r.rows.length) {
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
-						E('td', { 'class': 'td' }, r.dev),
+						E('td', { 'class': 'td' }, [ r.dev ]),
 						E('td', { 'class': 'td', 'colspan': '8' },
-							E('em', {}, _('no ingress filters')))
+							E('em', {}, [ _('no ingress filters') ]))
 					]));
 					return;
 				}
 				r.rows.forEach(function(row) {
 					any = true;
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
-						E('td', { 'class': 'td' }, r.dev),
-						E('td', { 'class': 'td' }, String(row.pref)),
-						E('td', { 'class': 'td' }, row.proto),
-						E('td', { 'class': 'td' }, row.match),
-						E('td', { 'class': 'td' }, row.offload || '—'),
+						E('td', { 'class': 'td' }, [ r.dev ]),
+						E('td', { 'class': 'td' }, [ String(row.pref) ]),
+						E('td', { 'class': 'td' }, [ row.proto ]),
+						E('td', { 'class': 'td' }, [ row.match ]),
+						E('td', { 'class': 'td' }, [ row.offload || '—' ]),
 						E('td', { 'class': 'td' }, E('span', {
 							'class': row.in_hw ? 'tcf-in-hw' : 'tcf-not-hw'
-						}, row.in_hw ? '✔' : '✗')),
-						E('td', { 'class': 'td' }, row.action),
-						E('td', { 'class': 'td' }, (row.packets != null) ? String(row.packets) : '—'),
-						E('td', { 'class': 'td' }, labels[r.dev + '|' + row.pref] || '—')
+						}, [ row.in_hw ? '✔' : '✗' ])),
+						E('td', { 'class': 'td' }, [ row.action ]),
+						E('td', { 'class': 'td' }, [ (row.packets != null) ? String(row.packets) : '—' ]),
+						E('td', { 'class': 'td' }, [ labels[r.dev + '|' + row.pref] || '—' ])
 					]));
 				});
 			});
@@ -134,13 +132,7 @@ return view.extend({
 		});
 	},
 
-	render: function(data) {
-		var netdevs = (data[0] || []).map(function(e) {
-			return e.name;
-		}).filter(function(n) {
-			return n && n != 'lo';
-		}).sort();
-
+	render: function() {
 		var m, s, o;
 
 		m = new form.Map('tcfilter', _('TC Filters'),
@@ -166,10 +158,8 @@ return view.extend({
 		o.default = '1';
 		o.editable = true;
 
-		o = s.option(form.Value, 'device', _('Device'));
+		o = s.option(widgets.DeviceSelect, 'device', _('Device'));
 		o.rmempty = false;
-		o.datatype = 'string';
-		netdevs.forEach(function(d) { o.value(d, d); });
 
 		o = s.option(form.Value, 'pref', _('Pref'),
 			_('Preference number, 1–65535. Required. Lower is matched first; it is also how the ' +
@@ -213,3 +203,4 @@ return view.extend({
 		});
 	}
 });
+
