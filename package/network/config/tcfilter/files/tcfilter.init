@@ -41,6 +41,11 @@ _rule_apply() {
 	[ -n "$pref" ] || { _log "rule $s: 'pref' is required (needed to remove the rule again)"; return 0; }
 	[ -e "/sys/class/net/$device" ] || { _log "rule $s: device '$device' not present, skipped"; return 0; }
 
+	# already installed (e.g. re-run from a hotplug event) - leave it alone
+	if $TC filter show dev "$device" ingress pref "$pref" 2>/dev/null | grep -q .; then
+		return 0
+	fi
+
 	_qdisc_ensure "$device"
 
 	set -f
