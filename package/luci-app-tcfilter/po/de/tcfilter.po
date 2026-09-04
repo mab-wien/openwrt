@@ -1,0 +1,101 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "TC Filters"
+msgstr "TC-Filter"
+
+msgid ""
+"Persistent <code>tc filter … ingress</code> rules. The match and action part "
+"is entered verbatim as <code>tc</code> syntax; this page only manages the "
+"device, the preference number, the enable state and persistence across "
+"reboots. Meant for the hardware tc-flower (PIE) offload."
+msgstr ""
+"Dauerhafte <code>tc filter … ingress</code>-Regeln. Der Match- und Action-Teil "
+"wird wörtlich als <code>tc</code>-Syntax eingegeben; diese Seite verwaltet nur "
+"Gerät, Preference-Nummer, Aktivierung und die Persistenz über Neustarts "
+"hinweg. Gedacht für den Hardware-tc-flower-Offload (PIE)."
+
+msgid "Global"
+msgstr "Allgemein"
+
+msgid "Enabled"
+msgstr "Aktiviert"
+
+msgid "Master switch. While off, a reload removes every managed filter."
+msgstr ""
+"Hauptschalter. Ist er aus, entfernt ein Reload alle verwalteten Filter."
+
+msgid "Rules"
+msgstr "Regeln"
+
+msgid "On"
+msgstr "Ein"
+
+msgid "Device"
+msgstr "Gerät"
+
+msgid "Pref"
+msgstr "Pref"
+
+msgid "Preference number, 1–65535. Required — it is how the rule is removed again."
+msgstr ""
+"Preference-Nummer, 1–65535. Erforderlich – darüber wird die Regel wieder "
+"entfernt."
+
+msgid "Spec"
+msgstr "Spec"
+
+msgid ""
+"Everything after <code>ingress pref N</code>. Use <code>skip_sw</code> so a "
+"match the hardware cannot offload fails visibly instead of installing in "
+"software."
+msgstr ""
+"Alles nach <code>ingress pref N</code>. <code>skip_sw</code> verwenden, damit "
+"ein von der Hardware nicht offloadbarer Match sichtbar fehlschlägt, statt in "
+"Software installiert zu werden."
+
+msgid "Should contain a filter kind such as \"flower\"."
+msgstr "Sollte eine Filter-Art wie \"flower\" enthalten."
+
+msgid "Hardware status"
+msgstr "Hardware-Status"
+
+msgid ""
+"Live view of the ingress filters on every device that has a rule. Refreshes "
+"every 5 s."
+msgstr ""
+"Live-Ansicht der Ingress-Filter auf jedem Gerät mit einer Regel. "
+"Aktualisierung alle 5 s."
+
+msgid "Protocol"
+msgstr "Protokoll"
+
+msgid "Match"
+msgstr "Match"
+
+msgid "Offload"
+msgstr "Offload"
+
+msgid "In HW"
+msgstr "In HW"
+
+msgid "Action"
+msgstr "Aktion"
+
+msgid "HW packets"
+msgstr "HW-Pakete"
+
+msgid "No rules configured yet."
+msgstr "Noch keine Regeln konfiguriert."
+
+msgid "Collecting data…"
+msgstr "Daten werden erfasst…"
+
+msgid "%s: could not read tc output"
+msgstr "%s: tc-Ausgabe konnte nicht gelesen werden"
+
+msgid "no ingress filters"
+msgstr "keine Ingress-Filter"

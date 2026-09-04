@@ -1,0 +1,87 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "TC Filters"
+msgstr ""
+
+msgid ""
+"Persistent <code>tc filter … ingress</code> rules. The match and action part "
+"is entered verbatim as <code>tc</code> syntax; this page only manages the "
+"device, the preference number, the enable state and persistence across "
+"reboots. Meant for the hardware tc-flower (PIE) offload."
+msgstr ""
+
+msgid "Global"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Master switch. While off, a reload removes every managed filter."
+msgstr ""
+
+msgid "Rules"
+msgstr ""
+
+msgid "On"
+msgstr ""
+
+msgid "Device"
+msgstr ""
+
+msgid "Pref"
+msgstr ""
+
+msgid "Preference number, 1–65535. Required — it is how the rule is removed again."
+msgstr ""
+
+msgid "Spec"
+msgstr ""
+
+msgid ""
+"Everything after <code>ingress pref N</code>. Use <code>skip_sw</code> so a "
+"match the hardware cannot offload fails visibly instead of installing in "
+"software."
+msgstr ""
+
+msgid "Should contain a filter kind such as \"flower\"."
+msgstr ""
+
+msgid "Hardware status"
+msgstr ""
+
+msgid ""
+"Live view of the ingress filters on every device that has a rule. Refreshes "
+"every 5 s."
+msgstr ""
+
+msgid "Protocol"
+msgstr ""
+
+msgid "Match"
+msgstr ""
+
+msgid "Offload"
+msgstr ""
+
+msgid "In HW"
+msgstr ""
+
+msgid "Action"
+msgstr ""
+
+msgid "HW packets"
+msgstr ""
+
+msgid "No rules configured yet."
+msgstr ""
+
+msgid "Collecting data…"
+msgstr ""
+
+msgid "%s: could not read tc output"
+msgstr ""
+
+msgid "no ingress filters"
+msgstr ""
