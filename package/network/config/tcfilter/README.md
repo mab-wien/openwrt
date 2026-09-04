@@ -55,8 +55,21 @@ tc filter add dev <device> ingress pref <pref>
 * ingress / `clsact` only.
 * The `clsact` qdisc is added if missing but never removed on stop (other
   users may share it); only the individual filters are deleted.
-* Re-apply hooks: `hotplug.d/iface` on `ifup` (full reload) and
-  `hotplug.d/net` on netdev `add` (per-device).
+* Installed `(device, pref)` pairs are tracked in `/var/run/tcfilter.state`
+  so a rule removed from the config is still torn down on the next reload.
+* Re-apply hooks: `hotplug.d/iface` runs `start` on `ifup`, `hotplug.d/net`
+  runs `reapply_dev` on netdev `add`. `start` is idempotent.
+* Changing the config from the CLI needs a manual `/etc/init.d/tcfilter
+  reload`; the LuCI page reloads the service on Save & Apply.
 * No dry-run validation — an invalid `spec` is reported via logread only.
 * Free-form `spec` is passed to `tc` by word-split (no shell). Anyone who can
   edit the config can install redirect/mirror rules, i.e. tap traffic.
+
+### Hardware packet counters (Realtek rtl930x PIE offload)
+
+With more than one offloaded flower rule on a switch, only the rule whose
+PIE rule id is even-aligned reports a working `tc -s` hardware packet
+count; the others stay at 0. Dropping / trapping / redirecting is
+unaffected. This is a limitation of the rtl930x LOG-counter path in the
+kernel driver (`rtl930x_packet_cntr_read()` assumes the L3-route counter
+layout), not of this package.
