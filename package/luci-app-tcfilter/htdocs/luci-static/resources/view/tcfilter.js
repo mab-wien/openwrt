@@ -2,23 +2,12 @@
 'require view';
 'require form';
 'require fs';
-'require rpc';
 'require uci';
 'require poll';
 'require dom';
-'require ui';
-
-var callRcInit = rpc.declare({
-	object: 'rc',
-	method: 'init',
-	params: [ 'name', 'action' ],
-	expect: { '': {} }
-});
 
 function tcExec(args) {
-	return fs.exec('/sbin/tc', args).catch(function() {
-		return fs.exec('/usr/sbin/tc', args);
-	}).then(function(res) {
+	return fs.exec('/sbin/tc', args).then(function(res) {
 		return (res && res.stdout) ? res.stdout : '';
 	}).catch(function() {
 		return '';
@@ -78,7 +67,7 @@ return view.extend({
 			if (s.device && devs.indexOf(s.device) < 0)
 				devs.push(s.device);
 			if (s.device && s.pref)
-				labels[s.device + '\0' + s.pref] = s.label || '';
+				labels[s.device + '|' + s.pref] = s.label || '';
 		});
 
 		if (!devs.length) {
@@ -130,12 +119,12 @@ return view.extend({
 						E('td', { 'class': 'td' }, row.proto),
 						E('td', { 'class': 'td' }, row.match),
 						E('td', { 'class': 'td' }, row.offload || '—'),
-						E('td', { 'class': 'td' }, row.in_hw
-							? E('span', { 'style': 'color:#2e7d32;font-weight:bold' }, '✔')
-							: E('span', { 'style': 'color:#c62828' }, '✗')),
+						E('td', { 'class': 'td' }, E('span', {
+							'class': row.in_hw ? 'tcf-in-hw' : 'tcf-not-hw'
+						}, row.in_hw ? '✔' : '✗')),
 						E('td', { 'class': 'td' }, row.action),
 						E('td', { 'class': 'td' }, (row.packets != null) ? String(row.packets) : '—'),
-						E('td', { 'class': 'td' }, labels[r.dev + '\0' + row.pref] || '—')
+						E('td', { 'class': 'td' }, labels[r.dev + '|' + row.pref] || '—')
 					]));
 				});
 			});
@@ -212,6 +201,7 @@ return view.extend({
 
 		return Promise.all([ m.render(), this.pollStatus(statusNode) ]).then(function(rendered) {
 			return E([], [
+				E('style', {}, '.tcf-in-hw{color:#2e7d32;font-weight:bold}.tcf-not-hw{color:#c62828}'),
 				E('div', { 'class': 'cbi-section', 'id': 'tcf-status' }, [
 					E('h3', {}, _('Hardware status')),
 					E('div', { 'class': 'cbi-section-descr' },
@@ -220,12 +210,6 @@ return view.extend({
 				]),
 				rendered[0]
 			]);
-		});
-	},
-
-	handleSaveApply: function(ev, mode) {
-		return this.super('handleSaveApply', [ ev, mode ]).then(function() {
-			return callRcInit('tcfilter', 'reload').catch(function() {});
 		});
 	}
 });
