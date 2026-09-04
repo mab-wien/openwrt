@@ -6,7 +6,7 @@
 # switch without a GitHub login, e.g.:
 #
 #   apk add --allow-untrusted \
-#     https://github.com/mab-wien/openwrt/releases/download/tcfilter-pkgs-latest/tcfilter-1-r1.apk \
+#     https://github.com/mab-wien/openwrt/releases/download/tcfilter-pkgs-latest/tcfilter-1.0-r1.apk \
 #     https://github.com/mab-wien/openwrt/releases/download/tcfilter-pkgs-latest/luci-app-tcfilter-0.apk
 #
 # (--allow-untrusted because the fork signs with its own throwaway key.)
@@ -29,7 +29,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 240
     permissions:
       contents: write
     steps:
@@ -57,11 +57,12 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Configure realtek/rtl930x (no device profile - packages only)
+      - name: Configure realtek/rtl930x - Zyxel XGS1210-12 B1
         run: |
           cat > .config <<'EOF'
           CONFIG_TARGET_realtek=y
           CONFIG_TARGET_realtek_rtl930x=y
+          CONFIG_TARGET_realtek_rtl930x_DEVICE_zyxel_xgs1210-12-b1=y
           CONFIG_PACKAGE_tcfilter=y
           CONFIG_PACKAGE_luci-app-tcfilter=y
           EOF
@@ -71,22 +72,13 @@ jobs:
       - name: Download sources
         run: make -j$(nproc) download
 
-      - name: Build toolchain
+      - name: Build
         run: |
-          make -j$(nproc) tools/install toolchain/install || {
-            echo "::group::verbose single-threaded retry"; make -j1 V=s tools/install toolchain/install; echo "::endgroup::"; exit 1;
-          }
-
-      - name: Build packages
-        run: |
-          set -e
-          # iproute2 -> tc-full (tcfilter's runtime dep); the luci-base stack
-          # is pulled in automatically by luci-app-tcfilter/compile.
-          pkgs="package/network/utils/iproute2/compile \
-                package/network/config/tcfilter/compile \
-                package/luci-app-tcfilter/compile"
-          make -j$(nproc) $pkgs || {
-            echo "::group::verbose single-threaded retry"; make -j1 V=s $pkgs; echo "::endgroup::"; exit 1;
+          make -j$(nproc) world || {
+            echo "::group::verbose single-threaded rebuild"
+            make -j1 V=s world
+            echo "::endgroup::"
+            exit 1
           }
 
       - name: Collect artifacts
