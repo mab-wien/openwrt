@@ -91,7 +91,6 @@ return view.extend({
 		})).then(function(results) {
 			var tbl = E('table', { 'class': 'table' }, [
 				E('tr', { 'class': 'tr table-titles' }, [
-					E('th', { 'class': 'th' }, _('Label')),
 					E('th', { 'class': 'th' }, _('Device')),
 					E('th', { 'class': 'th' }, _('Pref')),
 					E('th', { 'class': 'th' }, _('Protocol')),
@@ -99,7 +98,8 @@ return view.extend({
 					E('th', { 'class': 'th' }, _('Offload')),
 					E('th', { 'class': 'th' }, _('In HW')),
 					E('th', { 'class': 'th' }, _('Action')),
-					E('th', { 'class': 'th' }, _('HW packets'))
+					E('th', { 'class': 'th' }, _('HW packets')),
+					E('th', { 'class': 'th' }, _('Label'))
 				])
 			]);
 
@@ -114,9 +114,8 @@ return view.extend({
 				}
 				if (!r.rows.length) {
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
-						E('td', { 'class': 'td' }, '—'),
 						E('td', { 'class': 'td' }, r.dev),
-						E('td', { 'class': 'td', 'colspan': '7' },
+						E('td', { 'class': 'td', 'colspan': '8' },
 							E('em', {}, _('no ingress filters')))
 					]));
 					return;
@@ -124,7 +123,6 @@ return view.extend({
 				r.rows.forEach(function(row) {
 					any = true;
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
-						E('td', { 'class': 'td' }, labels[r.dev + '\0' + row.pref] || '—'),
 						E('td', { 'class': 'td' }, r.dev),
 						E('td', { 'class': 'td' }, String(row.pref)),
 						E('td', { 'class': 'td' }, row.proto),
@@ -134,7 +132,8 @@ return view.extend({
 							? E('span', { 'style': 'color:#2e7d32;font-weight:bold' }, '✔')
 							: E('span', { 'style': 'color:#c62828' }, '✗')),
 						E('td', { 'class': 'td' }, row.action),
-						E('td', { 'class': 'td' }, (row.packets != null) ? String(row.packets) : '—')
+						E('td', { 'class': 'td' }, (row.packets != null) ? String(row.packets) : '—'),
+						E('td', { 'class': 'td' }, labels[r.dev + '\0' + row.pref] || '—')
 					]));
 				});
 			});
@@ -169,18 +168,12 @@ return view.extend({
 		s = m.section(form.GridSection, 'rule', _('Rules'));
 		s.addremove = true;
 		s.anonymous = true;
-		s.sortable = true;
+		s.sortable = false;   // section order is irrelevant - tc orders by pref
 		s.nodescriptions = true;
 
 		o = s.option(form.Flag, 'enabled', _('On'));
 		o.default = '1';
 		o.editable = true;
-
-		o = s.option(form.Value, 'label', _('Label'),
-			_('Optional, for your reference only. Shown in the status table and the log.'));
-		o.rmempty = true;
-		o.placeholder = 'Drop-HomePlug-AV (FRITZ!Box)';
-		o.width = '20%';
 
 		o = s.option(form.Value, 'device', _('Device'));
 		o.rmempty = false;
@@ -188,7 +181,8 @@ return view.extend({
 		netdevs.forEach(function(d) { o.value(d, d); });
 
 		o = s.option(form.Value, 'pref', _('Pref'),
-			_('Preference number, 1–65535. Required — it is how the rule is removed again.'));
+			_('Preference number, 1–65535. Required. Lower is matched first; it is also how the ' +
+			  'rule is removed again. (The Realtek PIE offload does not use it as a hardware priority.)'));
 		o.datatype = 'range(1, 65535)';
 		o.rmempty = false;
 		o.placeholder = '49152';
@@ -197,13 +191,19 @@ return view.extend({
 			_('Everything after <code>ingress pref N</code>. Use <code>skip_sw</code> so a match the ' +
 			  'hardware cannot offload fails visibly instead of installing in software.'));
 		o.rmempty = false;
-		o.width = '48%';
+		o.width = '40%';
 		o.placeholder = 'protocol 0x88e1 flower skip_sw action drop';
 		o.validate = function(section_id, value) {
 			if (value && !/\bflower\b|\bmatchall\b|\bu32\b|\bbasic\b/.test(value))
 				return _('Should contain a filter kind such as "flower".');
 			return true;
 		};
+
+		o = s.option(form.Value, 'label', _('Label'),
+			_('Optional, for your reference only. Shown in the status table and the log.'));
+		o.rmempty = true;
+		o.placeholder = 'Drop-HomePlug-AV (FRITZ!Box)';
+		o.width = '20%';
 
 		var statusNode = E('div', {}, E('p', { 'class': 'spinning' }, _('Collecting data…')));
 		poll.add(L.bind(this.pollStatus, this, statusNode), 5);

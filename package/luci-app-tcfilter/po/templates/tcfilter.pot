@@ -39,7 +39,10 @@ msgstr ""
 msgid "Pref"
 msgstr ""
 
-msgid "Preference number, 1–65535. Required — it is how the rule is removed again."
+msgid ""
+"Preference number, 1–65535. Required. Lower is matched first; it is also how "
+"the rule is removed again. (The Realtek PIE offload does not use it as a "
+"hardware priority.)"
 msgstr ""
 
 msgid "Spec"
