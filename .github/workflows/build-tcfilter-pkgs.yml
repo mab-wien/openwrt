@@ -2,12 +2,15 @@
 #
 # Builds the tcfilter + luci-app-tcfilter packages (and their tc-full
 # dependency) for realtek/rtl930x and publishes the .apk files to a rolling
-# pre-release tagged `tcfilter-pkgs-latest`, so they can be installed on the
-# switch without a GitHub login, e.g.:
+# pre-release tagged `tcfilter-pkgs-latest`. Both the versioned names and
+# stable aliases (tc-full.apk / tcfilter.apk / luci-app-tcfilter.apk) are
+# uploaded. OpenWrt's apk cannot install from a URL, so fetch first:
 #
-#   apk add --allow-untrusted \
-#     https://github.com/mab-wien/openwrt/releases/download/tcfilter-pkgs-latest/tcfilter-1.0-r1.apk \
-#     https://github.com/mab-wien/openwrt/releases/download/tcfilter-pkgs-latest/luci-app-tcfilter-0.apk
+#   cd /tmp
+#   for p in tc-full tcfilter luci-app-tcfilter; do
+#     wget -O $p.apk https://github.com/mab-wien/openwrt/releases/download/tcfilter-pkgs-latest/$p.apk
+#   done
+#   apk add --allow-untrusted ./tc-full.apk ./tcfilter.apk ./luci-app-tcfilter.apk
 #
 # (--allow-untrusted because the fork signs with its own throwaway key.)
 
@@ -88,6 +91,11 @@ jobs:
           src="bin/packages/${arch}/base"
           mkdir -p out
           cp "$src"/tcfilter-*.apk "$src"/luci-app-tcfilter-*.apk "$src"/tc-full-*.apk out/
+          # stable aliases so the install instructions don't need the version
+          ( cd out
+            cp tcfilter-*.apk          tcfilter.apk
+            cp luci-app-tcfilter-*.apk luci-app-tcfilter.apk
+            cp tc-full-*.apk           tc-full.apk )
           ( cd out && sha256sum *.apk | tee sha256sums )
           ls -lah out
           echo "arch=$arch" >> "$GITHUB_OUTPUT"
@@ -110,6 +118,6 @@ jobs:
           gh release delete "$TAG" -R "$GITHUB_REPOSITORY" --yes || true
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --verify-tag \
             --title "tcfilter packages - latest" \
-            --notes "Automated build of \`package-tcfilter\` @ ${built_sha} (run ${GITHUB_RUN_ID}) for realtek/rtl930x (${{ steps.collect.outputs.arch }}). Install with \`apk add --allow-untrusted <url>\`." \
+            --notes "$(printf 'Automated build of `package-tcfilter` @ %s (run %s) for realtek/rtl930x (%s).\n\nInstall on the switch:\n\n```\ncd /tmp\nfor p in tc-full tcfilter luci-app-tcfilter; do\n  wget -O $p.apk https://github.com/%s/releases/download/%s/$p.apk\ndone\napk add --allow-untrusted ./tc-full.apk ./tcfilter.apk ./luci-app-tcfilter.apk\n```' "$built_sha" "$GITHUB_RUN_ID" "${{ steps.collect.outputs.arch }}" "$GITHUB_REPOSITORY" "$TAG")" \
             --prerelease \
             out/*
