@@ -71,10 +71,12 @@ return view.extend({
 	},
 
 	pollStatus: function(node) {
-		var devs = [];
+		var devs = [], labels = {};
 		(uci.sections('tcfilter', 'rule') || []).forEach(function(s) {
 			if (s.device && devs.indexOf(s.device) < 0)
 				devs.push(s.device);
+			if (s.device && s.pref)
+				labels[s.device + '\0' + s.pref] = s.label || '';
 		});
 
 		if (!devs.length) {
@@ -89,6 +91,7 @@ return view.extend({
 		})).then(function(results) {
 			var tbl = E('table', { 'class': 'table' }, [
 				E('tr', { 'class': 'tr table-titles' }, [
+					E('th', { 'class': 'th' }, _('Label')),
 					E('th', { 'class': 'th' }, _('Device')),
 					E('th', { 'class': 'th' }, _('Pref')),
 					E('th', { 'class': 'th' }, _('Protocol')),
@@ -104,13 +107,14 @@ return view.extend({
 			results.forEach(function(r) {
 				if (r.rows == null) {
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
-						E('td', { 'class': 'td', 'colspan': '8' },
+						E('td', { 'class': 'td', 'colspan': '9' },
 							E('em', {}, _('%s: could not read tc output').format(r.dev)))
 					]));
 					return;
 				}
 				if (!r.rows.length) {
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td' }, '—'),
 						E('td', { 'class': 'td' }, r.dev),
 						E('td', { 'class': 'td', 'colspan': '7' },
 							E('em', {}, _('no ingress filters')))
@@ -120,6 +124,7 @@ return view.extend({
 				r.rows.forEach(function(row) {
 					any = true;
 					tbl.appendChild(E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td' }, labels[r.dev + '\0' + row.pref] || '—'),
 						E('td', { 'class': 'td' }, r.dev),
 						E('td', { 'class': 'td' }, String(row.pref)),
 						E('td', { 'class': 'td' }, row.proto),
@@ -170,6 +175,12 @@ return view.extend({
 		o = s.option(form.Flag, 'enabled', _('On'));
 		o.default = '1';
 		o.editable = true;
+
+		o = s.option(form.Value, 'label', _('Label'),
+			_('Optional, for your reference only. Shown in the status table and the log.'));
+		o.rmempty = true;
+		o.placeholder = 'Drop-HomePlug-AV (FRITZ!Box)';
+		o.width = '20%';
 
 		o = s.option(form.Value, 'device', _('Device'));
 		o.rmempty = false;

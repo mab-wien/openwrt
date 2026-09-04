@@ -34,6 +34,13 @@ msgstr "Regeln"
 msgid "On"
 msgstr "Ein"
 
+msgid "Label"
+msgstr "Bezeichnung"
+
+msgid "Optional, for your reference only. Shown in the status table and the log."
+msgstr ""
+"Optional, nur zur Orientierung. Erscheint in der Statustabelle und im Log."
+
 msgid "Device"
 msgstr "Gerät"
 

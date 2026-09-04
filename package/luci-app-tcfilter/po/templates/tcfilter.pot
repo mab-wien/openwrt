@@ -27,6 +27,12 @@ msgstr ""
 msgid "On"
 msgstr ""
 
+msgid "Label"
+msgstr ""
+
+msgid "Optional, for your reference only. Shown in the status table and the log."
+msgstr ""
+
 msgid "Device"
 msgstr ""
 

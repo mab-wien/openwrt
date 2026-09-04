@@ -53,17 +53,20 @@ _all_pairs() {
 }
 
 _rule_apply() {
-	local s="$1" device pref spec enabled err
+	local s="$1" device pref spec enabled label desc err
 
 	config_get device "$s" device
 	config_get pref "$s" pref
 	config_get spec "$s" spec
+	config_get label "$s" label
 	config_get_bool enabled "$s" enabled 1
 
+	desc="${label:-$s}"
+
 	[ "$enabled" = 1 ] || return 0
-	[ -n "$device" ] && [ -n "$spec" ] || { _log "rule $s: 'device' and 'spec' are required"; return 0; }
-	[ -n "$pref" ] || { _log "rule $s: 'pref' is required (needed to remove the rule again)"; return 0; }
-	[ -e "/sys/class/net/$device" ] || { _log "rule $s: device '$device' not present, skipped"; return 0; }
+	[ -n "$device" ] && [ -n "$spec" ] || { _log "rule $desc: 'device' and 'spec' are required"; return 0; }
+	[ -n "$pref" ] || { _log "rule $desc: 'pref' is required (needed to remove the rule again)"; return 0; }
+	[ -e "/sys/class/net/$device" ] || { _log "rule $desc: device '$device' not present, skipped"; return 0; }
 
 	# already installed (e.g. re-run from a hotplug event) - just track it
 	if $TC filter show dev "$device" ingress pref "$pref" 2>/dev/null | grep -q .; then
@@ -80,11 +83,11 @@ _rule_apply() {
 
 	if err=$($TC filter add dev "$device" ingress pref "$pref" "$@" 2>&1); then
 		_state_record "$device" "$pref"
-		_log "rule $s: added on $device (pref $pref)"
+		_log "rule $desc: added on $device (pref $pref)"
 	else
 		# tc dumps its whole usage on a parse error - keep the first line only
 		err=$(printf '%s\n' "$err" | sed -n '1p' | cut -c1-200)
-		_log "rule $s: tc rejected the spec: ${err:-unknown error}"
+		_log "rule $desc: tc rejected the spec: ${err:-unknown error}"
 	fi
 }
 

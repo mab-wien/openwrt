@@ -19,11 +19,15 @@ config tcfilter 'global'
 	option enabled '1'
 
 config rule
+	option label   'Drop-HomePlug-AV (FRITZ!Box)'
 	option device  'lan1'
 	option enabled '1'
 	option pref    '49152'
 	option spec    'protocol 0x88e1 flower skip_sw action drop'
 ```
+
+`label` is optional and cosmetic — it only tags the log messages and the
+LuCI rows.
 
 `spec` is everything that would follow
 
