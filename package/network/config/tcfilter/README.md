@@ -26,6 +26,10 @@ config rule
 	option spec    'protocol 0x88e1 flower skip_sw action drop'
 ```
 
+The shipped default config carries this pair of rules with
+`enabled '0'` as a ready-to-use example — set `device` and flip
+`enabled` to `1`.
+
 `label` is optional and cosmetic — it only tags the log messages and the
 LuCI rows.
 
