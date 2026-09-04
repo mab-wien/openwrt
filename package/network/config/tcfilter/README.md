@@ -63,8 +63,10 @@ tc filter add dev <device> ingress pref <pref>
   so a rule removed from the config is still torn down on the next reload.
 * Re-apply hooks: `hotplug.d/iface` runs `start` on `ifup`, `hotplug.d/net`
   runs `reapply_dev` on netdev `add`. `start` is idempotent.
-* Changing the config from the CLI needs a manual `/etc/init.d/tcfilter
-  reload`; the LuCI page reloads the service on Save & Apply.
+* A `procd_add_reload_trigger` reloads the service when the `tcfilter`
+  config changes, so LuCI Save & Apply and `uci commit tcfilter &&
+  reload_config` take effect on their own; a bare `uci commit` still needs
+  an explicit `/etc/init.d/tcfilter reload`.
 * No dry-run validation — an invalid `spec` is reported via logread only.
 * Free-form `spec` is passed to `tc` by word-split (no shell). Anyone who can
   edit the config can install redirect/mirror rules, i.e. tap traffic.
