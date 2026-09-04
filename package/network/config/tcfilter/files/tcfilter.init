@@ -1,0 +1,122 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-2.0-only
+
+START=99
+STOP=10
+
+EXTRA_COMMANDS="show reapply_dev"
+EXTRA_HELP="	show			Dump tc filters on every configured device
+	reapply_dev <device>	Re-apply the rules bound to one device"
+
+. /lib/functions.sh
+
+TC=tc
+TAG=tcfilter
+
+_log() { logger -t "$TAG" "$@"; }
+
+_global_enabled() {
+	local en
+	config_get_bool en global enabled 1
+	[ "$en" = 1 ]
+}
+
+# add the clsact qdisc if it is not already there; never 'replace' - that
+# would flush filters installed by anything else.
+_qdisc_ensure() {
+	$TC qdisc add dev "$1" clsact 2>/dev/null
+	return 0
+}
+
+_rule_apply() {
+	local s="$1" device pref spec enabled err
+
+	config_get device "$s" device
+	config_get pref "$s" pref
+	config_get spec "$s" spec
+	config_get_bool enabled "$s" enabled 1
+
+	[ "$enabled" = 1 ] || return 0
+	[ -n "$device" ] && [ -n "$spec" ] || { _log "rule $s: 'device' and 'spec' are required"; return 0; }
+	[ -n "$pref" ] || { _log "rule $s: 'pref' is required (needed to remove the rule again)"; return 0; }
+	[ -e "/sys/class/net/$device" ] || { _log "rule $s: device '$device' not present, skipped"; return 0; }
+
+	_qdisc_ensure "$device"
+
+	set -f
+	# shellcheck disable=SC2086  # deliberate word-split of the tc spec
+	set -- $spec
+	set +f
+
+	if err=$($TC filter add dev "$device" ingress pref "$pref" "$@" 2>&1); then
+		_log "rule $s: added on $device (pref $pref)"
+	else
+		# tc dumps its whole usage on a parse error - keep the first line only
+		err=$(printf '%s\n' "$err" | sed -n '1p' | cut -c1-200)
+		_log "rule $s: tc rejected the spec: ${err:-unknown error}"
+	fi
+}
+
+_rule_remove() {
+	local s="$1" device pref
+
+	config_get device "$s" device
+	config_get pref "$s" pref
+	[ -n "$device" ] && [ -n "$pref" ] || return 0
+	[ -e "/sys/class/net/$device" ] || return 0
+
+	$TC filter del dev "$device" ingress pref "$pref" 2>/dev/null \
+		&& _log "rule $s: removed from $device (pref $pref)"
+}
+
+_reapply_one() {
+	local s="$1" want="$2" device
+	config_get device "$s" device
+	[ "$device" = "$want" ] || return 0
+	_rule_remove "$s"
+	_rule_apply "$s"
+}
+
+_collect_dev() {
+	local d
+	config_get d "$1" device
+	[ -n "$d" ] || return 0
+	case " $TCF_DEVS " in *" $d "*) ;; *) TCF_DEVS="$TCF_DEVS $d" ;; esac
+}
+
+start() {
+	config_load tcfilter
+	_global_enabled || { _log "disabled via tcfilter.global.enabled=0"; return 0; }
+	config_foreach _rule_apply rule
+}
+
+stop() {
+	config_load tcfilter
+	config_foreach _rule_remove rule
+}
+
+reload() {
+	stop
+	start
+}
+
+reapply_dev() {
+	local want="$1"
+	[ -n "$want" ] || { echo "usage: $initscript reapply_dev <device>" >&2; return 1; }
+	config_load tcfilter
+	_global_enabled || return 0
+	config_foreach _reapply_one rule "$want"
+}
+
+show() {
+	local d
+	TCF_DEVS=""
+	config_load tcfilter
+	config_foreach _collect_dev rule
+	for d in $TCF_DEVS; do
+		[ -e "/sys/class/net/$d" ] || { echo "== $d (absent) =="; echo; continue; }
+		echo "== $d ingress =="
+		$TC -s filter show dev "$d" ingress
+		echo
+	done
+}

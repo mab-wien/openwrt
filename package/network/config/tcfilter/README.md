@@ -1,0 +1,58 @@
+# tcfilter
+
+A thin UCI front-end for persistent `tc filter ... ingress` rules.
+
+It does **not** model the flower match/action fields. You write that part as
+raw `tc` syntax in `option spec`; the package only manages the device, the
+`pref` number, enable/disable, persistence across boot, and re-applying the
+rules when the network is reconfigured.
+
+Meant for driving hardware tc-flower offload (e.g. the Realtek DSA PIE
+offload) where no higher-level config layer exists.
+
+## Config
+
+`/etc/config/tcfilter`:
+
+```
+config tcfilter 'global'
+	option enabled '1'
+
+config rule
+	option device  'lan1'
+	option enabled '1'
+	option pref    '49152'
+	option spec    'protocol 0x88e1 flower skip_sw action drop'
+```
+
+`spec` is everything that would follow
+
+```
+tc filter add dev <device> ingress pref <pref>
+```
+
+* `pref` is **required** — it is how the rule is deleted again.
+* Use `skip_sw` so a match the hardware cannot offload fails loudly instead
+  of silently installing in software.
+* One `rule` per `pref` per device.
+
+## Commands
+
+```
+/etc/init.d/tcfilter start        # apply all enabled rules
+/etc/init.d/tcfilter stop         # remove them
+/etc/init.d/tcfilter reload       # stop + start
+/etc/init.d/tcfilter show         # tc -s filter show for every configured device
+/etc/init.d/tcfilter reapply_dev lan1
+```
+
+## Notes / limitations
+
+* ingress / `clsact` only.
+* The `clsact` qdisc is added if missing but never removed on stop (other
+  users may share it); only the individual filters are deleted.
+* Re-apply hooks: `hotplug.d/iface` on `ifup` (full reload) and
+  `hotplug.d/net` on netdev `add` (per-device).
+* No dry-run validation — an invalid `spec` is reported via logread only.
+* Free-form `spec` is passed to `tc` by word-split (no shell). Anyone who can
+  edit the config can install redirect/mirror rules, i.e. tap traffic.
